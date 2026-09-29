@@ -32,7 +32,7 @@ alter table xp_events enable row level security;
 revoke all on all tables in schema public from anon, authenticated;
 
 create or replace function create_space(p_code text,p_data jsonb) returns jsonb
-language plpgsql security definer set search_path=public as $$
+language plpgsql security definer set search_path=public,extensions as $$
 declare v_token text:=encode(gen_random_bytes(24),'hex'); v_name text:=coalesce(p_data->'users'->0->>'name','Pessoa 01');
 begin
   insert into rooms(code,state) values(p_code,p_data);
@@ -44,10 +44,10 @@ begin
 exception when unique_violation then return jsonb_build_object('ok',false); end $$;
 
 create or replace function find_space(p_code text) returns table(data jsonb,rev bigint)
-language sql security definer set search_path=public as $$ select state,revision from rooms where code=p_code $$;
+language sql security definer set search_path=public,extensions as $$ select state,revision from rooms where code=p_code $$;
 
 create or replace function join_space(p_code text,p_me smallint) returns jsonb
-language plpgsql security definer set search_path=public as $$
+language plpgsql security definer set search_path=public,extensions as $$
 declare v_token text:=encode(gen_random_bytes(24),'hex'); v_state jsonb; v_rev bigint; v_name text;
 begin
   if p_me not in (0,1) then raise exception 'invalid member'; end if;
@@ -60,14 +60,14 @@ begin
 end $$;
 
 create or replace function get_space(p_code text,p_token text,p_rev bigint) returns table(data jsonb,rev bigint)
-language plpgsql security definer set search_path=public as $$
+language plpgsql security definer set search_path=public,extensions as $$
 begin
   if not exists(select 1 from room_members where room_code=p_code and session_token=p_token) then raise exception 'unauthorized'; end if;
   return query select case when revision=p_rev then null else state end,revision from rooms where code=p_code;
 end $$;
 
 create or replace function save_space(p_code text,p_token text,p_rev bigint,p_data jsonb) returns jsonb
-language plpgsql security definer set search_path=public as $$
+language plpgsql security definer set search_path=public,extensions as $$
 declare v_new bigint;
 begin
   if not exists(select 1 from room_members where room_code=p_code and session_token=p_token) then raise exception 'unauthorized'; end if;
