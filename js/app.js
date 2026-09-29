@@ -49,7 +49,8 @@ function rMs(){const t=total(),c=nextMs(t);
   $('#v-marcos').innerHTML=`<div class="phead"><h2 class="serif h2">Marcos</h2></div><ol class="ms">${MILESTONES.map(m=>{const s=t>=m.xp?'done':m===c?'cur':'lock';return`<li class="${s} rv"${s==='done'?` data-a="replay" data-xp="${m.xp}" role="button" tabindex="0" aria-label="Rever ${m.name}"`:''}><span class="node"></span><p class="mx serif">${fmt(m.xp)}</p><p class="mn">${m.name}</p><p class="mute">${s==='lock'?'<span class="redact">██████████████</span>':esc(m.reward)}</p><p class="lab" style="margin-top:6px">${{done:'Concluído',cur:'Actual',lock:'Bloqueado'}[s]}</p></li>`}).join('')}</ol>`}
 function rSp(){const t=total(),sn=S.couple.since,d=sn?Math.floor((Date.now()-new Date(sn+'T00:00'))/864e5)+1:'0',
   f=[['Começaram',sn?new Date(sn+'T00:00').toLocaleDateString('pt-PT',{day:'numeric',month:'long',year:'numeric'}):'Ainda não definido'],['Dias juntos',d],['XP acumulado',fmt(t)],['Missões concluídas',S.missions.filter(m=>m.done).length],['Marcos desbloqueados',MILESTONES.filter(m=>t>=m.xp).length+' de '+MILESTONES.length]];
-  $('#v-espaco').innerHTML=`<div class="space"><div><p class="lab">Este espaço pertence a</p><h2 class="serif spname">${esc(S.couple.name)}</h2><p class="serif it quote">Pequenas coisas.<br>Uma história inteira.</p><dl class="facts">${f.map(([k,v])=>`<div><dt>${k}</dt><dd class="serif">${v}</dd></div>`).join('')}</dl></div><div><button class="photo" data-a="photo" data-cur="1" aria-label="Escolher fotografia">${S.photo?`<img src="${S.photo}" alt="Fotografia de ${esc(S.couple.name)}">`:'<span class="serif it">Uma fotografia vossa.</span>'}</button><button class="ghost quiet" data-a="reset">Sair deste espaço</button>${Sync.link?`<p class="lab" style="margin-top:28px">Código do espaço</p><p class="serif" style="font-size:1.8rem;letter-spacing:.04em">${Sync.show(Sync.link.code)}</p><button class="ghost quiet" data-a="share">PARTILHAR CONVITE</button>`:''}</div></div>`}
+  const me=Sync.link?.me,hasEmail=me===0||me===1?S.users[me]?.email:'';
+  $('#v-espaco').innerHTML=`<div class="space"><div><p class="lab">Este espaço pertence a</p><h2 class="serif spname">${esc(S.couple.name)}</h2><p class="serif it quote">Pequenas coisas.<br>Uma história inteira.</p><dl class="facts">${f.map(([k,v])=>`<div><dt>${k}</dt><dd class="serif">${v}</dd></div>`).join('')}</dl></div><div><button class="photo" data-a="photo" data-cur="1" aria-label="Escolher fotografia">${S.photo?`<img src="${S.photo}" alt="Fotografia de ${esc(S.couple.name)}">`:'<span class="serif it">Uma fotografia vossa.</span>'}</button>${Sync.link?`<button class="ghost quiet" data-a="email">${hasEmail?'ALTERAR E-MAIL':'ADICIONAR E-MAIL'}</button><p class="lab" style="margin-top:28px">Código do espaço</p><p class="serif" style="font-size:1.8rem;letter-spacing:.04em">${Sync.show(Sync.link.code)}</p><button class="ghost quiet" data-a="share">PARTILHAR CONVITE</button>`:''}<button class="ghost quiet" data-a="reset">Sair deste espaço</button></div></div>`}
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.1});
 function render(){$('#sp').textContent=S.couple.name;rHome();rMis();rXp();rMs();rSp();$$('.rv').forEach(e=>io.observe(e))}
 function setThread(){const p=$('.prog');if(!p)return;const pct=Math.min(1,total()/nextMs().xp);p.style.strokeDashoffset=1-lastPct;requestAnimationFrame(()=>requestAnimationFrame(()=>{p.style.strokeDashoffset=1-pct}));lastPct=pct}
@@ -88,6 +89,10 @@ function giveSheet(){const n=S.users.map(u=>u.name);
     $('form',f).onsubmit=e=>{e.preventDefault();const d=new FormData(e.target),amt=+d.get('c')||+d.get('q'),r=d.get('r').trim();
       if(r.length<2)return bad(f,'r','Escreve o motivo.');if(!(amt>0))return bad(f,'c','Escolhe uma quantidade.');
       closeSheet();award([{uid:+d.get('who'),amt}],r,'gift')}})}
+function emailSheet(){const me=Sync.link?.me;if(me!==0&&me!==1)return;const current=S.users[me]?.email||'';
+  openSheet(`<h2 class="serif h2" id="sh">Notificações</h2><p class="mute" style="margin-top:14px">Adiciona o teu e-mail para receber novas missões e XP oferecido.</p><form novalidate>
+  <label>O teu e-mail<input name="email" type="email" value="${esc(current)}" autocomplete="email" placeholder="tu@exemplo.com"></label><p class="err" role="alert"></p>
+  <div class="row"><button type="button" class="ghost" data-a="x">AGORA NÃO</button><button class="btn">GUARDAR E-MAIL</button></div></form>`,f=>{$('form',f).onsubmit=e=>{e.preventDefault();const v=new FormData(e.target).get('email').trim();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))return bad(f,'email','Introduz um e-mail válido.');S.users[me].email=v;Store.save(S);closeSheet();render();toast('E-mail guardado.')}})}
 function loseSheet(){const n=S.users.map(u=>u.name);
   openSheet(`<h2 class="serif h2" id="sh">Tirar XP</h2><form novalidate>
   <fieldset><legend>De quem?</legend>${chips('who',[['0',n[0]],['1',n[1]]],'0')}</fieldset>
@@ -124,7 +129,7 @@ function completeMission(id){const m=S.missions.find(x=>x.id===id);if(!m||m.done
 
 /* Eventos */
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
-  if(a==='new')missionSheet();else if(a==='give')giveSheet();else if(a==='take')loseSheet();else if(a==='x')closeSheet();
+  if(a==='new')missionSheet();else if(a==='give')giveSheet();else if(a==='take')loseSheet();else if(a==='email')emailSheet();else if(a==='x')closeSheet();
   else if(a==='done')completeMission(+b.dataset.id);
   else if(a==='replay')unlockSeq(MILESTONES.find(m=>m.xp==b.dataset.xp));
   else if(a==='share')share();
@@ -148,7 +153,7 @@ $('#enter').onclick=()=>{S={couple:{name:$('#sn').value.trim()||'Us.',since:$('#
     {id:2,n:15,title:'Faz uma surpresa',desc:'Sem avisar.',xp:2500,who:'1',dif:'Normal',due:'',done:false},
     {id:3,n:16,title:'Uma noite sem telemóveis',desc:'Só nós dois, até ao fim do dia.',xp:5000,who:'both',dif:'Difícil',due:'',done:false,secret:true,locked:true,unlockAt:20000}]};
   Store.save(S);create()};
-function start(){$('#intro').hidden=true;$('#app').hidden=false;render();go('home');if(Sync.link&&!start.p){start.p=setInterval(tick,3500);tick()}}
+function start(){const needsEmail=Sync.link&&(Sync.link.me===0||Sync.link.me===1)&&!S?.users?.[Sync.link.me]?.email;$('#intro').hidden=true;$('#app').hidden=false;render();go('home');if(needsEmail)setTimeout(emailSheet,450);if(Sync.link&&!start.p){start.p=setInterval(tick,3500);tick()}}
 
 /* Ligação entre as duas pessoas */
 $('#go0').onclick=()=>step(Sync.on?1:2);$('#jn').onclick=()=>step(5);$('#go2').onclick=start;
