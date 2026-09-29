@@ -29,13 +29,13 @@ const chips=(name,opts,c)=>`<div class="chips">${opts.map(o=>{const[v,t=v]=Array
 
 /* Render */
 const pTpl=(u,i)=>`<div class="p"><p class="lab">Pessoa 0${i+1}</p><p class="pname serif">${esc(u.name)}</p><p class="pxp" data-u="${i}">${fmt(u.xp)}</p><p class="lab">XP, ${S.history.filter(h=>h.uid===i&&h.kind==='mission').length} missões</p></div>`;
-const tl=l=>l.length?`<ol class="tl">${l.map(h=>`<li class="rv"><time>${ago(h.t)}</time><div><b class="serif">+${fmt(h.amt)} XP</b><p>${esc(S.users[h.uid].name)} ${h.kind==='mission'?'concluiu':'recebeu'}: “${esc(h.reason)}”</p></div></li>`).join('')}</ol>`:'<p class="serif it mute" style="font-size:1.4rem;margin-top:24px">Ainda nada. O primeiro XP é vosso.</p>';
+const tl=l=>l.length?`<ol class="tl">${l.map(h=>`<li class="rv"><time>${ago(h.t)}</time><div><b class="serif">${h.amt<0?'-':'+'}${fmt(Math.abs(h.amt))} XP</b><p>${esc(S.users[h.uid].name)} ${h.kind==='mission'?'concluiu':h.kind==='loss'?'perdeu':'recebeu'}: “${esc(h.reason)}”</p></div></li>`).join('')}</ol>`:'<p class="serif it mute" style="font-size:1.4rem;margin-top:24px">Ainda nada. O primeiro XP é vosso.</p>';
 function rHome(){const t=total(),nx=nextMs(t);
   $('#v-home').innerHTML=`<div class="home"><div class="hero"><p class="lab">Nosso XP</p><h1 class="big serif" id="bigxp"><span id="tot">${fmt(t)}</span></h1>
   <svg class="thread" viewBox="0 0 600 60" preserveAspectRatio="none" aria-hidden="true"><path class="track" d="${TH}"/><path class="prog" pathLength="1" d="${TH}"/><line class="tk" x1="600" x2="600" y1="14" y2="46"/></svg>
   <p class="sub"><span>${fmt(t)} / ${fmt(nx.xp)} XP</span><span>${t>=nx.xp?'Tudo conquistado':'Faltam '+fmt(nx.xp-t)}</span></p>
   <p class="lab" style="margin-top:28px">Nosso próximo marco</p><p class="serif it next">${esc(nx.name)}</p></div>
-  <div class="side"><div class="duo">${S.users.map(pTpl).join('')}</div><div class="row"><button class="btn" data-a="give">DAR XP</button><button class="ghost" data-a="new">+ NOVA MISSÃO</button></div>${tl(S.history.slice(0,3))}</div></div>`}
+  <div class="side"><div class="duo">${S.users.map(pTpl).join('')}</div><div class="row"><button class="btn" data-a="give">DAR XP</button><button class="ghost" data-a="take">TIRAR XP</button><button class="ghost" data-a="new">+ NOVA MISSÃO</button></div>${tl(S.history.slice(0,3))}</div></div>`}
 function mTpl(m){
   const c=['mission','rv'];if(m.done)c.push('done');if(m.id===fresh)c.push('new');if(m.reveal)c.push('reveal');
   if(m.secret&&m.locked)return`<article class="mission secret rv" data-cur="lock"><div><p class="lab">Missão secreta #${pad(m.n)}</p><h3 class="redact" aria-label="Conteúdo oculto">██████████</h3><p class="mute">Abre aos ${fmt(m.unlockAt)} XP</p></div><div class="s2"><p class="mxp">??? XP</p><p class="lab">Bloqueada</p></div></article>`;
@@ -43,11 +43,11 @@ function mTpl(m){
 function rMis(){const o=S.missions.filter(m=>!m.done),d=S.missions.filter(m=>m.done);
   $('#v-missoes').innerHTML=`<div class="phead"><h2 class="serif h2">Missões</h2><button class="btn" data-a="new">+ NOVA MISSÃO</button></div>${o.map(mTpl).join('')||'<p class="serif it mute" style="font-size:1.4rem">Sem missões abertas. Inventem uma.</p>'}${d.length?'<h3 class="lab sec">Concluídas</h3>'+d.map(mTpl).join(''):''}`;
   S.missions.forEach(m=>delete m.reveal);fresh=0}
-function rXp(){$('#v-xp').innerHTML=`<div class="phead"><h2 class="serif h2">XP</h2><button class="btn" data-a="give">DAR XP</button></div><div class="duo">${S.users.map(pTpl).join('')}</div><h3 class="lab sec">Histórico</h3>${tl(S.history.slice(0,60))}`}
+function rXp(){$('#v-xp').innerHTML=`<div class="phead"><h2 class="serif h2">XP</h2><div class="row"><button class="btn" data-a="give">DAR XP</button><button class="ghost" data-a="take">TIRAR XP</button></div></div><div class="duo">${S.users.map(pTpl).join('')}</div><h3 class="lab sec">Histórico</h3>${tl(S.history.slice(0,60))}`}
 function rMs(){const t=total(),c=nextMs(t);
   $('#v-marcos').innerHTML=`<div class="phead"><h2 class="serif h2">Marcos</h2></div><ol class="ms">${MILESTONES.map(m=>{const s=t>=m.xp?'done':m===c?'cur':'lock';return`<li class="${s} rv"${s==='done'?` data-a="replay" data-xp="${m.xp}" role="button" tabindex="0" aria-label="Rever ${m.name}"`:''}><span class="node"></span><p class="mx serif">${fmt(m.xp)}</p><p class="mn">${m.name}</p><p class="mute">${s==='lock'?'<span class="redact">██████████████</span>':esc(m.reward)}</p><p class="lab" style="margin-top:6px">${{done:'Concluído',cur:'Actual',lock:'Bloqueado'}[s]}</p></li>`}).join('')}</ol>`}
-function rSp(){const t=total(),sn=S.couple.since,d=sn?Math.floor((Date.now()-new Date(sn+'T00:00'))/864e5)+1:'—',
-  f=[['Começaram',sn?new Date(sn+'T00:00').toLocaleDateString('pt-PT',{day:'numeric',month:'long',year:'numeric'}):'—'],['Dias juntos',d],['XP acumulado',fmt(t)],['Missões concluídas',S.missions.filter(m=>m.done).length],['Marcos desbloqueados',MILESTONES.filter(m=>t>=m.xp).length+' de '+MILESTONES.length]];
+function rSp(){const t=total(),sn=S.couple.since,d=sn?Math.floor((Date.now()-new Date(sn+'T00:00'))/864e5)+1:'0',
+  f=[['Começaram',sn?new Date(sn+'T00:00').toLocaleDateString('pt-PT',{day:'numeric',month:'long',year:'numeric'}):'Ainda não definido'],['Dias juntos',d],['XP acumulado',fmt(t)],['Missões concluídas',S.missions.filter(m=>m.done).length],['Marcos desbloqueados',MILESTONES.filter(m=>t>=m.xp).length+' de '+MILESTONES.length]];
   $('#v-espaco').innerHTML=`<div class="space"><div><p class="lab">Este espaço pertence a</p><h2 class="serif spname">${esc(S.couple.name)}</h2><p class="serif it quote">Pequenas coisas.<br>Uma história inteira.</p><dl class="facts">${f.map(([k,v])=>`<div><dt>${k}</dt><dd class="serif">${v}</dd></div>`).join('')}</dl></div><div><button class="photo" data-a="photo" data-cur="1" aria-label="Escolher fotografia">${S.photo?`<img src="${S.photo}" alt="Fotografia de ${esc(S.couple.name)}">`:'<span class="serif it">Uma fotografia vossa.</span>'}</button><button class="ghost quiet" data-a="reset">Sair deste espaço</button>${Sync.link?`<p class="lab" style="margin-top:28px">Código do espaço</p><p class="serif" style="font-size:1.8rem;letter-spacing:.04em">${Sync.show(Sync.link.code)}</p><button class="ghost quiet" data-a="share">PARTILHAR CONVITE</button>`:''}</div></div>`}
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.1});
 function render(){$('#sp').textContent=S.couple.name;rHome();rMis();rXp();rMs();rSp();$$('.rv').forEach(e=>io.observe(e))}
@@ -87,10 +87,20 @@ function giveSheet(){const n=S.users.map(u=>u.name);
     $('form',f).onsubmit=e=>{e.preventDefault();const d=new FormData(e.target),amt=+d.get('c')||+d.get('q'),r=d.get('r').trim();
       if(r.length<2)return bad(f,'r','Escreve o motivo.');if(!(amt>0))return bad(f,'c','Escolhe uma quantidade.');
       closeSheet();award([{uid:+d.get('who'),amt}],r,'gift')}})}
+function loseSheet(){const n=S.users.map(u=>u.name);
+  openSheet(`<h2 class="serif h2" id="sh">Tirar XP</h2><form novalidate>
+  <fieldset><legend>De quem?</legend>${chips('who',[['0',n[0]],['1',n[1]]],'0')}</fieldset>
+  <fieldset><legend>Quantidade</legend>${chips('q',[100,500,1000,2500,5000].map(v=>[v,'-'+fmt(v)]),100)}</fieldset>
+  <label>Ou valor personalizado<input name="c" type="number" min="1" inputmode="numeric"></label>
+  <label>Por quê?<input name="r" maxlength="60" autocomplete="off" placeholder="Ajuste de XP."></label><p class="err" role="alert"></p>
+  <div class="row"><button type="button" class="ghost" data-a="x">CANCELAR</button><button class="btn">REMOVER XP</button></div></form>`,f=>{
+    $('form',f).onsubmit=e=>{e.preventDefault();const d=new FormData(e.target),uid=+d.get('who'),amt=+d.get('c')||+d.get('q'),r=d.get('r').trim();
+      if(r.length<2)return bad(f,'r','Escreve o motivo.');if(!(amt>0))return bad(f,'c','Escolhe uma quantidade.');if(amt>S.users[uid].xp)return bad(f,'c','Não podes retirar mais XP do que a pessoa tem.');
+      closeSheet();award([{uid,amt:-amt}],r,'loss')}})}
 
 /* Momentos: recompensa e marcos */
 function moment(label,amt,from,to){return new Promise(res=>{const st=$('#stage');st.className='stage on';
-  st.innerHTML=`<div><p class="line lab" style="--d:.1s">${label}</p><p class="line b2 serif" style="--d:.4s">+${fmt(amt)} XP</p><p class="line lab" style="--d:.9s">Total <b id="tt" style="color:var(--text);font-size:1.2rem;font-weight:500">${fmt(from)}</b></p><p class="line serif it" style="--d:1.7s">Mais perto.</p></div>`;
+  st.innerHTML=`<div><p class="line lab" style="--d:.1s">${label}</p><p class="line b2 serif" style="--d:.4s">${amt<0?'-':'+'}${fmt(Math.abs(amt))} XP</p><p class="line lab" style="--d:.9s">Total <b id="tt" style="color:var(--text);font-size:1.2rem;font-weight:500">${fmt(from)}</b></p><p class="line serif it" style="--d:1.7s">${amt<0?'Ajustado.':'Mais perto.'}</p></div>`;
   setTimeout(()=>countUp($('#tt'),from,to,1000),900);
   const end=()=>{clearTimeout(t);st.onclick=null;st.className='stage';st.innerHTML='';res()},t=setTimeout(end,3400);st.onclick=end})}
 function unlockSeq(m){return new Promise(res=>{const st=$('#stage');st.className='stage on dark';
@@ -100,10 +110,10 @@ function unlockSeq(m){return new Promise(res=>{const st=$('#stage');st.className
 async function award(list,reason,kind){
   const before=total(),pre=S.users.map(u=>u.xp),amt=list.reduce((s,x)=>s+x.amt,0);
   lastPct=Math.min(1,before/nextMs(before).xp);
-  list.forEach(x=>{S.users[x.uid].xp+=x.amt;S.history.unshift({t:Date.now(),uid:x.uid,amt:x.amt,reason,kind})});
+  list.forEach(x=>{S.users[x.uid].xp=Math.max(0,S.users[x.uid].xp+x.amt);S.history.unshift({t:Date.now(),uid:x.uid,amt:x.amt,reason,kind})});
   const after=total(),crossed=MILESTONES.filter(m=>before<m.xp&&after>=m.xp);
   S.missions.forEach(m=>{if(m.secret&&m.locked&&after>=m.unlockAt){m.locked=false;m.reveal=1}});
-  Store.save(S);await moment(kind==='mission'?'MISSÃO COMPLETA':'XP ATRIBUÍDO',amt,before,after);
+  Store.save(S);await moment(kind==='mission'?'MISSÃO COMPLETA':kind==='loss'?'XP REMOVIDO':'XP ATRIBUÍDO',amt,before,after);
   render();go('home',1);countUp($('#tot'),before,after,1200);
   $$('.pxp').forEach(e=>countUp(e,pre[e.dataset.u],S.users[e.dataset.u].xp,1200));
   const b=$('#bigxp');b.classList.add('pulse');
@@ -113,7 +123,7 @@ function completeMission(id){const m=S.missions.find(x=>x.id===id);if(!m||m.done
 
 /* Eventos */
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
-  if(a==='new')missionSheet();else if(a==='give')giveSheet();else if(a==='x')closeSheet();
+  if(a==='new')missionSheet();else if(a==='give')giveSheet();else if(a==='take')loseSheet();else if(a==='x')closeSheet();
   else if(a==='done')completeMission(+b.dataset.id);
   else if(a==='replay')unlockSeq(MILESTONES.find(m=>m.xp==b.dataset.xp));
   else if(a==='share')share();

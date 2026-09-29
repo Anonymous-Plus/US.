@@ -19,7 +19,7 @@ input{font:inherit;color:inherit}
 /* intro */
 .step{display:none;min-height:100dvh;padding:var(--pad);padding-bottom:calc(var(--pad) + env(safe-area-inset-bottom));flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:28px;max-width:760px}
 .step.on{display:flex;animation:in .9s var(--ease)}
-.mark{font-size:clamp(7rem,38vw,20rem);line-height:.78;letter-spacing:-.05em}.mark i{color:var(--accent);font-style:normal}
+.mark{font-size:clamp(7rem,38vw,20rem);line-height:.78;letter-spacing:-.05em}.heart-logo{display:block;fill:none;stroke:var(--accent);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}.mark-heart{width:clamp(7rem,38vw,18rem);height:auto}.brand-heart{width:30px;height:28px}
 .tag{font-size:clamp(1.4rem,5vw,2rem);color:var(--muted)}
 .fld{display:block;width:100%;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
 .fld input{display:block;width:100%;margin-top:6px;padding:8px 0 12px;background:none;border:0;border-bottom:1px solid var(--border);border-radius:0;font:400 clamp(1.8rem,7vw,2.6rem)/1.1 var(--serif);text-transform:none;letter-spacing:0;color:var(--text);transition:border-color .3s}
