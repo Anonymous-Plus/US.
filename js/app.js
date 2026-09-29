@@ -142,14 +142,14 @@ function start(){$('#intro').hidden=true;$('#app').hidden=false;render();go('hom
 /* Ligação entre as duas pessoas */
 $('#go0').onclick=()=>step(Sync.on?1:2);$('#jn').onclick=()=>step(5);$('#go2').onclick=start;
 async function create(){if(!Sync.on)return start();
-  try{const c=await Sync.create(S);$('#cd').textContent=Sync.show(c);step(6)}catch(e){console.error(e);toast('Sem ligação ao servidor. Tenta outra vez.')}}
+  try{const c=await Sync.create(S);$('#cd').textContent=Sync.show(c);step(6)}catch(e){console.error(e);toast('Servidor: '+(e.message||'erro desconhecido'))}}
 async function share(){const u=location.origin+location.pathname+'#'+Sync.link.code;
   try{if(navigator.share)await navigator.share({title:'US.',text:'Entra no nosso espaço. Código: '+Sync.show(Sync.link.code),url:u});else{await navigator.clipboard.writeText(u);toast('Link copiado.')}}catch(e){}}
 $('#jb').onclick=async()=>{const c=Sync.norm($('#jc').value);if(c.length<12)return toast('O código tem 12 caracteres.');
   try{const r=await Sync.find(c);if(!r)return toast('Não encontrei esse espaço.');
     $('#jw').innerHTML='<p class="lab" style="width:100%">Quem és?</p>'+r.data.users.map((u,i)=>`<button class="btn" data-me="${i}">SOU ${esc(u.name).toUpperCase()}</button>`).join('');
     $$('#jw [data-me]').forEach(b=>b.onclick=async()=>{try{S=await Sync.join(c,+b.dataset.me);localStorage.setItem(KEY,JSON.stringify(S));start()}catch(e){console.error(e);toast('Não foi possível entrar nesta sala.')}})}
-  catch(e){toast('Sem ligação ao servidor.')}};
+  catch(e){console.error(e);toast('Servidor: '+(e.message||'erro desconhecido'))}};
 async function tick(){if(tick.b||!Sync.link||document.hidden||dlg.open||$('#stage').classList.contains('on'))return;tick.b=1;
   try{const r=await Sync.pull();if(r)await applyRemote(r)}catch(e){}tick.b=0}
 async function applyRemote(r){const n=r.data,me=Sync.link.me,before=total(),last=S.history[0]?S.history[0].t:0,news=n.history.filter(h=>h.t>last),
