@@ -25,6 +25,7 @@ const ago=t=>{const m=(Date.now()-t)/6e4,d=new Date(t),n=new Date();if(m<1)retur
 
 function countUp(el,a,b,ms=900){if(!el)return;if(reduce){el.textContent=fmt(b);return}const t0=performance.now();(function f(t){const p=Math.min(1,(t-t0)/ms);el.textContent=fmt(a+(b-a)*(1-Math.pow(1-p,3)));if(p<1)requestAnimationFrame(f)})(t0)}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2400)}
+function notify(to,subject,html){const emails=to.map(u=>u?.email).filter(e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));if(!emails.length)return;fetch('/api/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:emails,subject,html})}).catch(e=>console.warn('Notificação não enviada',e))}
 const chips=(name,opts,c)=>`<div class="chips">${opts.map(o=>{const[v,t=v]=Array.isArray(o)?o:[o];return`<label class="chip"><input type="radio" name="${name}" value="${esc(v)}"${String(v)===String(c)?' checked':''}><span>${esc(t)}</span></label>`}).join('')}</div>`;
 
 /* Render */
@@ -76,7 +77,7 @@ function missionSheet(){const n=S.users.map(u=>u.name);
     $('form',f).onsubmit=e=>{e.preventDefault();const d=new FormData(e.target),t=d.get('title').trim(),xp=+d.get('xp');
       if(!t)return bad(f,'title','Dá um nome à missão.');if(!(xp>0))return bad(f,'xp','O XP tem de ser maior que zero.');
       const m={id:Date.now(),n:S.next++,title:t,desc:d.get('desc').trim(),xp,who:d.get('who'),dif:d.get('dif'),due:d.get('due'),done:false};
-      S.missions.unshift(m);fresh=m.id;Store.save(S);closeSheet();render();go('missoes');toast('Missão criada.')}})}
+      S.missions.unshift(m);fresh=m.id;Store.save(S);const targets=m.who==='both'?S.users:S.users.filter((u,i)=>String(i)===m.who);notify(targets,'Nova missão no vosso espaço',`<p>Foi criada uma nova missão: <strong>${esc(m.title)}</strong>.</p><p>Abre o vosso espaço para ver os detalhes.</p>`);closeSheet();render();go('missoes');toast('Missão criada.')}})}
 function giveSheet(){const n=S.users.map(u=>u.name);
   openSheet(`<h2 class="serif h2" id="sh">Dar XP</h2><form novalidate>
   <fieldset><legend>Quem recebe?</legend>${chips('who',[['0',n[0]],['1',n[1]]],'0')}</fieldset>
@@ -113,7 +114,7 @@ async function award(list,reason,kind){
   list.forEach(x=>{S.users[x.uid].xp=Math.max(0,S.users[x.uid].xp+x.amt);S.history.unshift({t:Date.now(),uid:x.uid,amt:x.amt,reason,kind})});
   const after=total(),crossed=MILESTONES.filter(m=>before<m.xp&&after>=m.xp);
   S.missions.forEach(m=>{if(m.secret&&m.locked&&after>=m.unlockAt){m.locked=false;m.reveal=1}});
-  Store.save(S);await moment(kind==='mission'?'MISSÃO COMPLETA':kind==='loss'?'XP REMOVIDO':'XP ATRIBUÍDO',amt,before,after);
+  Store.save(S);if(kind==='gift')notify(list.map(x=>S.users[x.uid]),'Recebeste XP no vosso espaço',`<p><strong>${fmt(Math.abs(amt))} XP</strong> foram oferecidos a ti.</p><p>${esc(reason)}</p>`);await moment(kind==='mission'?'MISSÃO COMPLETA':kind==='loss'?'XP REMOVIDO':'XP ATRIBUÍDO',amt,before,after);
   render();go('home',1);countUp($('#tot'),before,after,1200);
   $$('.pxp').forEach(e=>countUp(e,pre[e.dataset.u],S.users[e.dataset.u].xp,1200));
   const b=$('#bigxp');b.classList.add('pulse');
@@ -142,7 +143,7 @@ $$('[data-next]').forEach(b=>b.onclick=()=>step(si+1));
 $('#n1').oninput=e=>{$('#f2').hidden=!e.target.value.trim()};
 const chk=()=>{$('#b1').disabled=!($('#n1').value.trim()&&$('#n2').value.trim())};$('#n1').addEventListener('input',chk);$('#n2').addEventListener('input',chk);
 $('#enter').onclick=()=>{S={couple:{name:$('#sn').value.trim()||'Us.',since:$('#sd').value},next:17,photo:'',history:[],
-  users:[{name:$('#n1').value.trim(),xp:8430},{name:$('#n2').value.trim(),xp:10000}],
+  users:[{name:$('#n1').value.trim(),email:$('#e1').value.trim(),xp:8430},{name:$('#n2').value.trim(),email:$('#e2').value.trim(),xp:10000}],
   missions:[{id:1,n:14,title:'Anda como um sapo',desc:'Durante 30 segundos.',xp:1000,who:'both',dif:'Fácil',due:'',done:false},
     {id:2,n:15,title:'Faz uma surpresa',desc:'Sem avisar.',xp:2500,who:'1',dif:'Normal',due:'',done:false},
     {id:3,n:16,title:'Uma noite sem telemóveis',desc:'Só nós dois, até ao fim do dia.',xp:5000,who:'both',dif:'Difícil',due:'',done:false,secret:true,locked:true,unlockAt:20000}]};
@@ -158,7 +159,7 @@ async function share(){const u=location.origin+location.pathname+'#'+Sync.link.c
 $('#jb').onclick=async()=>{const c=Sync.norm($('#jc').value);if(c.length<12)return toast('O código tem 12 caracteres.');
   try{const r=await Sync.find(c);if(!r)return toast('Não encontrei esse espaço.');
     $('#jw').innerHTML='<p class="lab" style="width:100%">Quem és?</p>'+r.data.users.map((u,i)=>`<button class="btn" data-me="${i}">SOU ${esc(u.name).toUpperCase()}</button>`).join('');
-    $$('#jw [data-me]').forEach(b=>b.onclick=async()=>{try{S=await Sync.join(c,+b.dataset.me);localStorage.setItem(KEY,JSON.stringify(S));start()}catch(e){console.error(e);toast('Não foi possível entrar nesta sala.')}})}
+    $$('#jw [data-me]').forEach(b=>b.onclick=async()=>{try{S=await Sync.join(c,+b.dataset.me);const email=prompt('Qual é o teu e-mail para receber notificações?','');if(email)S.users[+b.dataset.me].email=email.trim();localStorage.setItem(KEY,JSON.stringify(S));Store.save(S);start()}catch(e){console.error(e);toast('Não foi possível entrar nesta sala.')}})}
   catch(e){console.error(e);toast('Servidor: '+(e.message||'erro desconhecido'))}};
 async function tick(){if(tick.b||!Sync.link||document.hidden||dlg.open||$('#stage').classList.contains('on'))return;tick.b=1;
   try{const r=await Sync.pull();if(r)await applyRemote(r)}catch(e){}tick.b=0}
